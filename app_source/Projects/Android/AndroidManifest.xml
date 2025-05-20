@@ -20,6 +20,15 @@
     <!-- Tell the system this app can handle tracked remotes and hands -->
     <uses-feature android:name="oculus.software.handtracking" android:required="false" />
     <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
+    <!-- Add permission to receive our broadcast -->
+    <uses-permission android:name="com.rail.oculus.teleop.permission.HAPTIC" />
+
+    <!-- Also declare the permission so other apps need to request it -->
+    <permission
+        android:name="com.rail.oculus.teleop.permission.HAPTIC"
+        android:protectionLevel="normal"
+        android:label="@string/app_name"
+        android:description="@string/app_name" />
 
     <application
         android:allowBackup="false"
@@ -48,5 +57,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Add our broadcast receiver -->
+        <receiver android:name=".HapticReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.rail.oculus.teleop.HAPTIC" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

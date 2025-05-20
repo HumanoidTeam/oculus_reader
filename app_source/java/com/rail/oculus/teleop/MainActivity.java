@@ -25,4 +25,7 @@ public class MainActivity extends android.app.NativeActivity {
     System.loadLibrary("vrapi");
     System.loadLibrary("vrinputstandard");
   }
+
+  // Native method to trigger haptic feedback
+  public static native void triggerHaptic(char side, float intensity, int duration);
 }

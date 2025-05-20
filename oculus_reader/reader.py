@@ -27,6 +27,7 @@ class OculusReader:
         self.last_buttons = {}
         self._lock = threading.Lock()
         self.tag = 'wE9ryARX'
+        self.haptic_tag = 'HAPTIC'
 
         self.ip_address = ip_address
         self.port = port
@@ -198,6 +199,24 @@ class OculusReader:
         file_obj.close()
         connection.close()
 
+    def send_haptic(self, side, intensity, duration_ms):
+        """Send a haptic command to the specified controller.
+
+        Args:
+            side (str): 'l' for left controller, 'r' for right controller
+            intensity (float): Vibration intensity between 0.0 and 1.0
+            duration_ms (float): Duration of vibration in milliseconds
+        """
+        if side not in ['l', 'r']:
+            raise ValueError("side must be 'l' or 'r'")
+        if not 0.0 <= intensity <= 1.0:
+            raise ValueError("intensity must be between 0.0 and 1.0")
+        if duration_ms < 0:
+            raise ValueError("duration_ms must be positive")
+
+        # Send broadcast intent instead of writing to logcat
+        command = f"am broadcast -a com.rail.oculus.teleop.HAPTIC --es side {side} --ef intensity {intensity} --ei duration {int(duration_ms)}"
+        self.device.shell(command)
 
 def main():
     oculus_reader = OculusReader()

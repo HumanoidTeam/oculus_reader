@@ -322,7 +322,7 @@ namespace OVRFW {
         void ResetHaptics(ovrMobile* ovr, float displayTimeInSeconds) override;
 
     private:
-        void UpdateHapticRequestedState(const ovrInputStateTrackedRemote& remoteInputState);
+        void UpdateHapticRequestedState(const ovrInputStateTrackedRemote& remoteInputState, const ovrHandedness controllerHand);
 
         DeviceHapticState RequestedHapticState;
         ovrInputTrackedRemoteCapabilities Caps;
@@ -521,6 +521,9 @@ namespace OVRFW {
         OVR::Vector3f SpecularLightDirection;
         OVR::Vector3f SpecularLightColor;
         OVR::Vector3f AmbientLightColor;
+
+        // Return the Buttons instance
+        class Buttons* GetButtons() { return Buttons; }
 
     private:
         ovrRenderState RenderState;

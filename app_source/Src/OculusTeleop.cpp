@@ -35,6 +35,25 @@ Copyright   : Copyright (c) Facebook Technologies, LLC and its affiliates. All r
 #include <sys/system_properties.h>
 #endif
 
+// Add this near the top of the file with other includes
+#include <jni.h>
+
+namespace OVRFW {
+
+ovrVrInputStandard* theApp = nullptr;
+
+// Add this before the class definition
+extern "C" {
+JNIEXPORT void JNICALL Java_com_rail_oculus_teleop_MainActivity_triggerHaptic(
+        JNIEnv* env, jclass clazz, jchar side, jfloat intensity, jint duration) {
+    // __android_log_print(ANDROID_LOG_INFO, "TEST", "RECEIVE CMD!");
+    if (theApp != nullptr && theApp->GetButtons() != nullptr) {
+//        __android_log_print(ANDROID_LOG_INFO, "TEST", "Triggering %c tracker with %f intensity, and duration %d", side, intensity, duration);
+        theApp->GetButtons()->trigger_haptic(side, intensity, duration);
+    }
+}
+}
+
 using OVR::Axis_X;
 using OVR::Axis_Y;
 using OVR::Axis_Z;
@@ -45,8 +64,6 @@ using OVR::Quatf;
 using OVR::Vector2f;
 using OVR::Vector3f;
 using OVR::Vector4f;
-
-namespace OVRFW {
 
 static const char* MenuDefinitionFile = R"menu_definition(
 itemParms {
@@ -386,7 +403,6 @@ static const char* AxisFragmentShaderSrc = R"glsl(
   }
 )glsl";
 
-ovrVrInputStandard* theApp = nullptr;
 
 VRMenuObject* FPSLabel = nullptr;
 VRMenuObject* StatusLabel = nullptr;
@@ -1745,6 +1761,7 @@ void ovrInputDeviceHandBase::UpdateHaptics(ovrMobile* ovr, float displayTimeInSe
     const auto hapticSampleDurationMs = GetHapticSampleDurationMS();
 
     if (desiredState.HapticState == HapticStates::HAPTICS_BUFFERED) {
+        // __android_log_print(ANDROID_LOG_INFO, "HapticDebug", "HAPTICS_BUFFERED - ovr=%p deviceId=%u", ovr, GetDeviceID());
         if (HasCapBufferedHaptics()) {
             // buffered haptics
             float intensity = 0.0f;
@@ -1769,6 +1786,7 @@ void ovrInputDeviceHandBase::UpdateHaptics(ovrMobile* ovr, float displayTimeInSe
             ALOG("Device does not support buffered haptics?");
         }
     } else if (desiredState.HapticState == HapticStates::HAPTICS_SIMPLE_CLICKED) {
+        // __android_log_print(ANDROID_LOG_INFO, "HapticDebug", "HAPTICS_SIMPLE_CLICKED - ovr=%p deviceId=%u", ovr, GetDeviceID());
         // simple haptics
         if (HasCapSimpleHaptics()) {
             if (PreviousHapticState.HapticState != HAPTICS_SIMPLE_CLICKED) {
@@ -1779,6 +1797,7 @@ void ovrInputDeviceHandBase::UpdateHaptics(ovrMobile* ovr, float displayTimeInSe
             ALOG("Device does not support simple haptics?");
         }
     } else if (desiredState.HapticState == HapticStates::HAPTICS_SIMPLE) {
+        // __android_log_print(ANDROID_LOG_INFO, "HapticDebug", "HAPTICS_SIMPLE - ovr=%p deviceId=%u desiredState=%f", ovr, GetDeviceID(), desiredState.HapticSimpleValue);
         // huge epsilon value since there is so much noise in the grip trigger
         // and currently a problem with sending too many haptics values.
         if (PreviousHapticState.HapticSimpleValue < (desiredState.HapticSimpleValue - 0.05f) ||
@@ -1788,6 +1807,7 @@ void ovrInputDeviceHandBase::UpdateHaptics(ovrMobile* ovr, float displayTimeInSe
         }
     } else {
         if (PreviousHapticState.HapticState == HAPTICS_BUFFERED) {
+            // __android_log_print(ANDROID_LOG_INFO, "HapticDebug", "HAPTICS_BUFFERED2 - ovr=%p deviceId=%u", ovr, GetDeviceID());
             ovrHapticBuffer hapticBuffer;
             uint8_t dataBuffer[hapticMaxSamples];
             hapticBuffer.BufferTime = displayTimeInSeconds;
@@ -1804,6 +1824,7 @@ void ovrInputDeviceHandBase::UpdateHaptics(ovrMobile* ovr, float displayTimeInSe
         } else if (
             PreviousHapticState.HapticState == HAPTICS_SIMPLE ||
             PreviousHapticState.HapticState == HAPTICS_SIMPLE_CLICKED) {
+            // __android_log_print(ANDROID_LOG_INFO, "HapticDebug", "HAPTICS_SIMPLE2 - ovr=%p deviceId=%u", ovr, GetDeviceID());
             vrapi_SetHapticVibrationSimple(ovr, GetDeviceID(), 0.0f);
             PreviousHapticState = {};
         }
@@ -1871,7 +1892,7 @@ bool ovrInputDeviceTrackedRemoteHand::Update(
             Buttons->update_buttons(remoteInputState, controllerHand);
             IsMenuPressedInternal = (remoteInputState.Buttons & ovrButton_Enter) != 0;
 
-            UpdateHapticRequestedState(remoteInputState);
+            UpdateHapticRequestedState(remoteInputState, controllerHand);
         }
     }
     return ret;
@@ -1916,13 +1937,19 @@ void ovrInputDeviceTrackedRemoteHand::SetControllerModel(ModelFile* m) {
 }
 
 void ovrInputDeviceTrackedRemoteHand::UpdateHapticRequestedState(
-    const ovrInputStateTrackedRemote& remoteInputState) {
-    if (remoteInputState.IndexTrigger > kHapticsGripThreashold) {
-        RequestedHapticState = {
-            SampleConfiguration.OnTriggerHapticsState, remoteInputState.IndexTrigger};
-    } else {
-        RequestedHapticState = {};
+    const ovrInputStateTrackedRemote& remoteInputState,
+    const ovrHandedness controllerHand) {
+    DeviceHapticState tracker;
+
+    if (controllerHand == VRAPI_HAND_RIGHT) {
+        tracker = theApp->GetButtons()->get_haptic_state('r');
     }
+    else{
+        tracker = theApp->GetButtons()->get_haptic_state('l');
+    }
+
+    RequestedHapticState = {
+            SampleConfiguration.OnTriggerHapticsState, tracker.HapticSimpleValue};
 }
 
 void ovrInputDeviceTrackedRemoteHand::ResetHaptics(ovrMobile* ovr, float displayTimeInSeconds) {
