@@ -25,6 +25,7 @@ class OculusReader:
         self.running = False
         self.last_transforms = {}
         self.last_buttons = {}
+        self.last_update_time = None  # set when data is received; used by sockpuppet proxy for staleness
         self._lock = threading.Lock()
         self.tag = 'wE9ryARX'
         self.haptic_tag = 'HAPTIC'
@@ -191,7 +192,9 @@ class OculusReader:
                 if data:
                     transforms, buttons = OculusReader.process_data(data)
                     with self._lock:
-                        self.last_transforms, self.last_buttons = transforms, buttons
+                        if transforms is not None and buttons is not None:
+                            self.last_transforms, self.last_buttons = transforms, buttons
+                            self.last_update_time = time.monotonic()
                     if self.print_FPS:
                         self.fps_counter.getAndPrintFPS()
             except UnicodeDecodeError:
